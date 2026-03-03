@@ -26,31 +26,33 @@ except Exception as e:
 st.header("Transaction Analysis")
 amount = st.number_input("Transaction Amount ($)", min_value=0.01, value=125.00)
 
-# We use an expander to keep the 29 V-features available but organized
+# Organized grid for features V1 through V29
 with st.expander("Adjust Behavioral Features (V1-V29)"):
     st.write("Modify these values to test how the model responds to different behaviors.")
     v_inputs = []
     cols = st.columns(4)
-    # Your model was trained on 30 features total (V1-V29 + Amount)
+    
+    # We loop from 1 to 29 to match the 30 total features trained in your notebook
     for i in range(1, 30):
-        with cols[i % 4]:
+        # By using (i - 1), V1 goes to Column 0, V2 to Column 1, etc.
+        col_index = (i - 1) % 4
+        with cols[col_index]:
             val = st.number_input(f"V{i}", value=0.0, step=0.1)
             v_inputs.append(val)
 
 # Run the analysis
 if st.button("Analyze Transaction"):
-    # Step 1: Scale the amount using the same logic as training
+    # First we scale the amount as done in training
     scaled_amount = scaler.transform([[amount]])[0][0]
     
-    # Step 2: Combine all 30 features (29 V-inputs and 1 scaled amount)
+    # Combine all 30 inputs (29 V-features plus the amount)
     final_features = v_inputs + [scaled_amount]
     final_input = np.array([final_features])
     
-    # Step 3: Get the prediction probability
+    # Get the model prediction
     prediction = model.predict(final_input)
     fraud_probability = prediction[0][0]
     
-    # Step 4: Show the result
     st.markdown("---")
     if fraud_probability > 0.5:
         st.error(f"High risk detected: {fraud_probability:.2%}")
@@ -59,7 +61,7 @@ if st.button("Analyze Transaction"):
         st.success(f"Transaction cleared: {fraud_probability:.2%}")
         st.write("The AI did not find significant risk factors.")
 
-# Sidebar branding
+# Sidebar status
 st.sidebar.title("System Info")
 st.sidebar.write("Model: Deep Neural Network")
 st.sidebar.write("Input Size: 30 Features")
