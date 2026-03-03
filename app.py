@@ -3,10 +3,17 @@ import tensorflow as tf
 import pandas as pd
 import joblib
 import numpy as np
+import datetime
 
+# Basic page setup
 st.set_page_config(page_title="Sentinel AI: Fraud Detector", page_icon="🛡️")
-st.title("🛡️ Project Sentinel")
+st.title("Project Sentinel")
 
+# Initialize the activity log in the background
+if 'activity_log' not in st.session_state:
+    st.session_state.activity_log = []
+
+# Load the AI model and scaler once to keep things fast
 @st.cache_resource
 def load_assets():
     model = tf.keras.models.load_model('fraud_model.keras')
@@ -15,43 +22,53 @@ def load_assets():
 
 try:
     model, scaler = load_assets()
-    st.success("✅ AI Engine Loaded Successfully")
+    st.success("AI Engine is ready")
 except Exception as e:
-    st.error(f"Error loading model: {e}")
+    st.error(f"Could not load the model: {e}")
 
-# --- DYNAMIC INPUTS ---
-st.subheader("Transaction Details")
-amount = st.number_input("Transaction Amount ($)", min_value=0.01, value=125.0)
+# Main user input area
+st.header("Transaction Analysis")
+amount = st.number_input("How much is the transaction? ($)", min_value=0.01, value=125.00)
+v14_input = st.number_input("Behavioral Feature V14 (Test -10 for Fraud)", value=0.0)
 
-# We create an expander so the 28 features don't clutter the screen
-with st.expander("Adjust Behavioral Features (V1-V28)"):
-    v_inputs = []
-    cols = st.columns(4)
-    for i in range(1, 29):
-        with cols[i % 4]:
-            val = st.number_input(f"V{i}", value=0.0, step=0.1)
-            v_inputs.append(val)
+# Process the prediction when the user clicks the button
+if st.button("Check for Fraud"):
+    # Prepare the input data
+    # We use 0.0 for most features but plug in your V14 value
+    v_features = np.zeros((1, 28)) 
+    v_features[0, 13] = v14_input
+    
+    # Standardize the amount using our saved scaler
+    scaled_amount = scaler.transform([[amount]])
+    
+    # Combine everything to match the 29 inputs the model expects
+    final_input = np.hstack([v_features, scaled_amount])
+    
+    # Run the prediction
+    prediction = model.predict(final_input)
+    fraud_probability = prediction[0][0]
+    
+    # Log this event for monitoring purposes
+    timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+    status = "FRAUD" if fraud_probability > 0.5 else "SAFE"
+    log_entry = f"Time: {timestamp} | Amount: ${amount} | V14: {v14_input} | Score: {fraud_probability:.2%} | Result: {status}"
+    st.session_state.activity_log.append(log_entry)
 
-if st.button("Run Fraud Analysis"):
-    try:
-        # 1. Scale the amount
-        scaled_amount = scaler.transform([[amount]])[0][0]
-        
-        # 2. Combine into a flat list: [V1...V28, Scaled_Amount]
-        # This creates exactly 29 features
-        final_features = v_inputs + [scaled_amount]
-        
-        # 3. Reshape for TensorFlow: (1, 29)
-        final_input = np.array([final_features])
-        
-        # 4. Predict
-        prediction = model.predict(final_input)
-        prob = prediction[0][0]
-        
-        if prob > 0.5:
-            st.error(f"🚨 ALERT: HIGH FRAUD RISK ({prob:.2%})")
-        else:
-            st.success(f"✅ TRANSACTION SAFE ({prob:.2%})")
-            
-    except Exception as e:
-        st.error(f"Input Error: {e}. Check if your model expects 29 or 30 features.")
+    # Display the result to the user
+    if fraud_probability > 0.5:
+        st.error(f"High risk of fraud detected! ({fraud_probability:.2%})")
+    else:
+        st.success(f"This transaction looks safe ({fraud_probability:.2%})")
+
+# The Monitoring Section
+# This acts as your diary to track how the model is performing
+if st.session_state.activity_log:
+    st.markdown("---")
+    st.subheader("System Monitoring Log")
+    for entry in reversed(st.session_state.activity_log):
+        st.text(entry)
+
+# Simple sidebar info
+st.sidebar.title("System Info")
+st.sidebar.write("Model: Neural Network")
+st.sidebar.write("Recall Rate: 82%")
