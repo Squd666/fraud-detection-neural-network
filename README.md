@@ -1,18 +1,21 @@
-Project Sentinel: Neural Network Fraud Detection
+🛡️ Project Sentinel: Neural Network Fraud Detection
 A production-ready deep learning system for identifying fraudulent credit card transactions.
 
 🚀 Live Demo
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://fraud-detection-neural-network-lqsjqccztdhcicryt6ectm.streamlit.app)
+
 📊 Project Overview
-This project demonstrates an end-to-end AI Engineering Pipeline. It features a Neural Network trained on the Kaggle Credit Card Fraud dataset, achieving a 82% recall rate to prioritize the detection of fraudulent activities.
+This project is an end-to-end AI Engineering Pipeline designed to identify high-risk fraudulent patterns. It uses a Deep Neural Network trained on PCA-transformed behavioral features and transaction amounts.
 
-🛠️ Tech Stack
-Modeling: Python, TensorFlow/Keras, Scikit-Learn
+🛠️ Key Features
+* Neural Network Inference: Processes 29 unique features (V1-V28 + Scaled Amount) in real-time.
+* Data Pipeline: Implements automatic feature scaling using a pre-trained `StandardScaler`.
+* Production UI: A clean, interactive Streamlit interface for manual transaction testing.
 
-Deployment: Streamlit Cloud
+🧪 How to Test
+1. Normal Transaction: Leave all V-features at `0.0`. The model should return "Safe."
+2. Fraudulent Pattern: Adjust V14 to `-5.0`. As seen in my testing, this typically triggers a ~76% Fraud Risk alert.
 
-Infrastructure: Azure ML for experimentation tracking
-
-Preprocessing: StandardScaling and PCA-transformed features
-
-🧪 Validation & Testing
-In the testing phase, the model successfully identified high-risk patterns. For example, by adjusting behavioral features (like V14), the model correctly flagged a transaction with a 76.73% fraud probability, demonstrating high sensitivity to anomalous behavioral data.
+📈 Model Performance
+* Target Recall: 82% (Optimized to minimize "False Negatives" in fraud detection).
+* Architecture: Multi-layer Perceptron (MLP) built with TensorFlow/Keras.
