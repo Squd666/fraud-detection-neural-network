@@ -1,13 +1,13 @@
 import streamlit as st
 import tensorflow as tf
-import pandas as pd
 import joblib
 import numpy as np
 
+# Page setup
 st.set_page_config(page_title="Sentinel AI", page_icon="🛡️")
 st.title("Project Sentinel")
-st.write("Neural Network Fraud Detection System")
 
+# Load assets
 @st.cache_resource
 def load_assets():
     model = tf.keras.models.load_model('fraud_model.keras')
@@ -16,40 +16,34 @@ def load_assets():
 
 model, scaler = load_assets()
 
-st.header("Transaction Details")
-time = st.number_input("Time (Seconds)", value=0)
-amount = st.number_input("Amount ($)", value=100.0)
+# Inputs
+time = st.number_input("Time", value=0)
+amount = st.number_input("Amount", value=100.0)
 
-with st.expander("Behavioral Features (V1-V28)"):
-    v_inputs = []
-    cols = st.columns(4)
-    for i in range(1, 29):
-        with cols[(i-1) % 4]:
-            val = st.number_input(f"V{i}", value=0.0)
-            v_inputs.append(val)
+v_inputs = []
+cols = st.columns(4)
+for i in range(1, 29):
+    with cols[(i-1) % 4]:
+        val = st.number_input(f"V{i}", value=0.0)
+        v_inputs.append(val)
 
-if st.button("Analyze Transaction"):
-    # 1. Create the 30-feature list for the SCALER
-    # Order: Time, V1-V28, Amount
-    full_feature_list = [time] + v_inputs + [amount]
+# Prediction Logic
+if st.button("Analyze"):
+    # 1. Scaler expects 30 features: Time + V1-V28 + Amount
+    full_features = [time] + v_inputs + [amount]
+    input_array = np.array([full_features])
     
-    # 2. Scale all 30 features
-    input_data = np.array([full_feature_list])
-    scaled_data = scaler.transform(input_data)
+    # 2. Transform (Scales all 30)
+    scaled_data = scaler.transform(input_array)
     
-    # 3. DROP the 'Time' column (index 0) because the MODEL only wants 29 features
-    # This is the secret step that stops the crash
-    model_input = scaled_data[:, 1:] 
+    # 3. Model expects 29 features (We drop Time, which is index 0)
+    model_input = scaled_data[:, 1:]
     
     # 4. Predict
     prediction = model.predict(model_input)
-    fraud_chance = prediction[0][0]
+    score = prediction[0][0]
     
-    st.divider()
-    if fraud_chance > 0.5:
-        st.error(f"HIGH RISK: {fraud_chance:.2%}")
+    if score > 0.5:
+        st.error(f"Fraud Detected: {score:.2%}")
     else:
-        st.success(f"SECURE: {fraud_chance:.2%}")
-
-st.sidebar.write("Model Input: 29 Features")
-st.sidebar.write("Scaler Input: 30 Features")
+        st.success(f"Transaction Secure: {score:.2%}")
