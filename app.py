@@ -24,17 +24,18 @@ except Exception as e:
 
 # User inputs
 st.header("Transaction Analysis")
+# Your notebook includes 'Time' as the first feature
+time = st.number_input("Time (Seconds since first transaction)", min_value=0, value=0)
 amount = st.number_input("Transaction Amount ($)", min_value=0.01, value=125.00)
 
-# Organized grid for features V1 through V29
-with st.expander("Adjust Behavioral Features (V1-V29)"):
-    st.write("Modify these values to test how the model responds to different behaviors.")
+# Organized grid for features V1 through V28
+with st.expander("Adjust Behavioral Features (V1-V28)"):
+    st.write("Modify these values to test how the model responds.")
     v_inputs = []
     cols = st.columns(4)
     
-    # We loop from 1 to 29 to match the 30 total features trained in your notebook
-    for i in range(1, 30):
-        # By using (i - 1), V1 goes to Column 0, V2 to Column 1, etc.
+    # We loop from 1 to 28 because V29 doesn't exist in your training set
+    for i in range(1, 29):
         col_index = (i - 1) % 4
         with cols[col_index]:
             val = st.number_input(f"V{i}", value=0.0, step=0.1)
@@ -42,14 +43,15 @@ with st.expander("Adjust Behavioral Features (V1-V29)"):
 
 # Run the analysis
 if st.button("Analyze Transaction"):
-    # First we scale the amount as done in training
+    # Step 1: Scale the amount
     scaled_amount = scaler.transform([[amount]])[0][0]
     
-    # Combine all 30 inputs (29 V-features plus the amount)
-    final_features = v_inputs + [scaled_amount]
+    # Step 2: Combine in exact training order: [Time, V1...V28, Scaled Amount]
+    # This creates the 30 features your model expects
+    final_features = [time] + v_inputs + [scaled_amount]
     final_input = np.array([final_features])
     
-    # Get the model prediction
+    # Step 3: Get prediction
     prediction = model.predict(final_input)
     fraud_probability = prediction[0][0]
     
