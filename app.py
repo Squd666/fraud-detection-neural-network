@@ -1,69 +1,58 @@
 import streamlit as st
 import tensorflow as tf
-import pandas as pd
 import joblib
 import numpy as np
 
-# Page configuration
-st.set_page_config(page_title="Sentinel AI: Fraud Detector", page_icon="🛡️")
+# Page setup
+st.set_page_config(page_title="Sentinel AI", page_icon="🛡️")
 st.title("Project Sentinel")
-st.write("This tool uses a neural network to check transactions for fraudulent patterns.")
+st.write("Neural Network Fraud Detection System")
 
-# Load the model and scaler
+# Load assets
 @st.cache_resource
 def load_assets():
+    # Load the model and the scaler precisely as named in your notebook
     model = tf.keras.models.load_model('fraud_model.keras')
     scaler = joblib.load('scaler.pkl')
     return model, scaler
 
 try:
     model, scaler = load_assets()
-    st.success("AI Engine is online")
+    st.success("AI Engine Online")
 except Exception as e:
-    st.error(f"Could not load assets: {e}")
+    st.error(f"Asset Error: {e}")
 
-# User inputs
-st.header("Transaction Analysis")
-# Your notebook includes 'Time' as the first feature
-time = st.number_input("Time (Seconds since first transaction)", min_value=0, value=0)
-amount = st.number_input("Transaction Amount ($)", min_value=0.01, value=125.00)
+# Inputs (Creating the 30 features the model expects)
+st.header("Transaction Details")
+time = st.number_input("Time (Seconds)", value=0)
+amount = st.number_input("Transaction Amount ($)", value=100.0)
 
-# Organized grid for features V1 through V28
-with st.expander("Adjust Behavioral Features (V1-V28)"):
-    st.write("Modify these values to test how the model responds.")
+with st.expander("Behavioral Features (V1-V28)"):
     v_inputs = []
     cols = st.columns(4)
-    
-    # We loop from 1 to 28 because V29 doesn't exist in your training set
     for i in range(1, 29):
-        col_index = (i - 1) % 4
-        with cols[col_index]:
-            val = st.number_input(f"V{i}", value=0.0, step=0.1)
+        with cols[(i-1) % 4]:
+            val = st.number_input(f"V{i}", value=0.0)
             v_inputs.append(val)
 
-# Run the analysis
-if st.button("Analyze Transaction"):
-    # Step 1: Scale the amount
-    scaled_amount = scaler.transform([[amount]])[0][0]
+if st.button("Analyze"):
+    # 1. Create the feature list in the EXACT training order: 
+    # [Time, V1...V28, Amount]
+    features = [time] + v_inputs + [amount]
     
-    # Step 2: Combine in exact training order: [Time, V1...V28, Scaled Amount]
-    # This creates the 30 features your model expects
-    final_features = [time] + v_inputs + [scaled_amount]
-    final_input = np.array([final_features])
+    # 2. Convert to a 2D array for the scaler
+    input_array = np.array([features])
     
-    # Step 3: Get prediction
-    prediction = model.predict(final_input)
-    fraud_probability = prediction[0][0]
+    # 3. SCALE ALL 30 FEATURES AT ONCE
+    # Your scaler was trained on all columns, so it must transform all columns.
+    scaled_input = scaler.transform(input_array)
     
-    st.markdown("---")
-    if fraud_probability > 0.5:
-        st.error(f"High risk detected: {fraud_probability:.2%}")
-        st.warning("This transaction matches patterns often associated with fraud.")
+    # 4. Predict
+    prediction = model.predict(scaled_input)
+    score = prediction[0][0]
+    
+    st.divider()
+    if score > 0.5:
+        st.error(f"🚨 FRAUD DETECTED ({score:.2%})")
     else:
-        st.success(f"Transaction cleared: {fraud_probability:.2%}")
-        st.write("The AI did not find significant risk factors.")
-
-# Sidebar status
-st.sidebar.title("System Info")
-st.sidebar.write("Model: Deep Neural Network")
-st.sidebar.write("Input Size: 30 Features")
+        st.success(f"✅ CLEAR ({score:.2%})")
